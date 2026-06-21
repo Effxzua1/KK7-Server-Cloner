@@ -33,7 +33,9 @@ Clone **entire Discord servers** in seconds — roles, channels, categories, and
 
 ### 📸 Preview
 
-*(Add screenshots of the tool running here)*
+*[KK7](https://files.grok.x.ai/grok
+
+/attachments/30313.jpg)*
 
 ---
 
