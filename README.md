@@ -1,11 +1,10 @@
-# KK7-Server-Cloner
 # 🌟 Discord Server Cloner - KK7
 
 **The fastest and most powerful Discord server cloner made in Python.**
 
 Clone **entire Discord servers** in seconds — roles, channels, categories, and server name with one click. Perfect for server owners who want to backup, duplicate, or move their community quickly.
 
-![Discord](https://discord.gg/gyG3KEuQc7) ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 
 ### ✨ Key Features
 
@@ -40,7 +39,7 @@ Clone **entire Discord servers** in seconds — roles, channels, categories, and
 
 **Made with ❤️ by Effxz**
 
-**Join the community: ** [guns.lol/yp1](https://guns.lol/yp1)
+**Join the community:** [guns.lol/yp1](https://guns.lol/yp1)
 
 ---
 
