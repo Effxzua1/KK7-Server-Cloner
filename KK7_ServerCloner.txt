@@ -1,0 +1,209 @@
+import requests
+import time
+import sys
+import webbrowser
+import base64
+
+# ==================== INTERFAZ ====================
+def print_header():
+    print("\n" + "="*80)
+    print("           🌟 DISCORD SERVER CLONER 🌟")
+    print("                     KK7")
+    print("                  By Effxz - Versión Ligera")
+    print("="*80 + "\n")
+
+def progress_bar(current, total, prefix=""):
+    if total <= 0:
+        return
+    percent = (current / total) * 100
+    bar_length = 40
+    filled = int(bar_length * current // total)
+    bar = '█' * filled + '░' * (bar_length - filled)
+    sys.stdout.write(f'\r{prefix} |{bar}| {percent:.1f}% ({current}/{total})')
+    sys.stdout.flush()
+
+def check_response(response, action=""):
+    if response.status_code >= 400:
+        try:
+            error = response.json()
+            print(f"\n❌ Error en {action}: {error.get('message', response.text)}")
+        except:
+            print(f"\n❌ Error en {action}: {response.status_code}")
+        return False
+    return True
+
+# ==================== PROGRAMA PRINCIPAL ====================
+if __name__ == "__main__":
+    try:
+        print("🌐 Abriendo guns.lol...")
+        webbrowser.open("https://guns.lol/yp1", new=2)
+    except:
+        pass
+
+    print_header()
+
+    TOKEN = input("🔑 Ingresa tu Token de Discord: ").strip()
+    SOURCE_GUILD_ID = input("📌 ID del servidor a CLONAR: ").strip()
+    TARGET_GUILD_ID = input("🎯 ID del servidor DESTINO: ").strip()
+
+    headers = {
+        "Authorization": TOKEN,
+        "Content-Type": "application/json"
+    }
+
+    def get_guild_data(guild_id):
+        r = requests.get(f"https://discord.com/api/v10/guilds/{guild_id}", headers=headers)
+        if check_response(r, "obtener datos del servidor"):
+            return r.json()
+        return None
+
+    def clone_server_name_icon():
+        print("\n🏷️ Clonando nombre del servidor...")
+        source = get_guild_data(SOURCE_GUILD_ID)
+        if not source:
+            return
+        
+        update_data = {"name": source.get('name', 'Cloned Server')}
+        
+        # Intentar clonar ícono sin Pillow
+        if source.get('icon'):
+            try:
+                print("   ⚠️ Intentando clonar ícono (versión simple)...")
+                icon_url = f"https://cdn.discordapp.com/icons/{SOURCE_GUILD_ID}/{source['icon']}.png?size=1024"
+                icon_resp = requests.get(icon_url)
+                if icon_resp.status_code == 200:
+                    icon_base64 = base64.b64encode(icon_resp.content).decode('utf-8')
+                    update_data["icon"] = f"data:image/png;base64,{icon_base64}"
+                    print("   ✅ Ícono clonado")
+            except Exception as e:
+                print(f"   ⚠️ No se pudo clonar el ícono: {e}")
+        
+        r = requests.patch(f"https://discord.com/api/v10/guilds/{TARGET_GUILD_ID}", headers=headers, json=update_data)
+        if check_response(r, "actualizar servidor"):
+            print(f"   ✅ Servidor renombrado a: {source.get('name')}")
+
+    def clone_roles():
+        print("\n📋 Clonando Roles...")
+        r = requests.get(f"https://discord.com/api/v10/guilds/{SOURCE_GUILD_ID}/roles", headers=headers)
+        if not check_response(r, "obtener roles"):
+            return
+        
+        roles = [role for role in r.json() if role.get('name') != "@everyone"]
+        total = len(roles)
+        
+        for i, role in enumerate(roles, 1):
+            try:
+                payload = {
+                    "name": role.get('name'),
+                    "color": role.get('color', 0),
+                    "hoist": role.get('hoist', False),
+                    "permissions": str(role.get('permissions', "0")),
+                    "mentionable": role.get('mentionable', False)
+                }
+                res = requests.post(f"https://discord.com/api/v10/guilds/{TARGET_GUILD_ID}/roles", headers=headers, json=payload)
+                if res.status_code == 201:
+                    print(f"   ✅ Rol: {role.get('name')}")
+                else:
+                    print(f"   ⚠️ Falló: {role.get('name')}")
+                progress_bar(i, total, "Roles")
+                time.sleep(0.65)
+            except Exception as e:
+                print(f"   ❌ Error rol {role.get('name')}: {e}")
+        print("\n✅ Roles terminados!")
+
+    def clone_channels():
+        print("\n📡 Clonando Canales y Categorías...")
+        r = requests.get(f"https://discord.com/api/v10/guilds/{SOURCE_GUILD_ID}/channels", headers=headers)
+        if not check_response(r, "obtener canales"):
+            return
+        
+        channels = sorted(r.json(), key=lambda x: x.get('position', 0))
+        total = len(channels)
+        current = 0
+        category_map = {}
+
+        # Categorías
+        for ch in [ch for ch in channels if ch.get('type') == 4]:
+            try:
+                payload = {
+                    "name": ch.get('name'),
+                    "type": 4,
+                    "position": ch.get('position', 0)
+                }
+                res = requests.post(f"https://discord.com/api/v10/guilds/{TARGET_GUILD_ID}/channels", headers=headers, json=payload)
+                if res.status_code == 201:
+                    category_map[ch['id']] = res.json()['id']
+                    print(f"   📁 Categoría: {ch.get('name')}")
+                current += 1
+                progress_bar(current, total, "Canales")
+                time.sleep(0.7)
+            except Exception as e:
+                print(f"   ❌ Error categoría {ch.get('name')}: {e}")
+
+        # Canales normales
+        for ch in channels:
+            if ch.get('type') == 4:
+                continue
+            try:
+                parent_id = category_map.get(ch.get('parent_id')) if ch.get('parent_id') else None
+                payload = {
+                    "name": ch.get('name'),
+                    "type": ch.get('type'),
+                    "position": ch.get('position', 0),
+                    "parent_id": parent_id,
+                    "topic": ch.get('topic'),
+                    "nsfw": ch.get('nsfw', False),
+                    "rate_limit_per_user": ch.get('rate_limit_per_user', 0),
+                    "bitrate": ch.get('bitrate'),
+                    "user_limit": ch.get('user_limit')
+                }
+                res = requests.post(f"https://discord.com/api/v10/guilds/{TARGET_GUILD_ID}/channels", headers=headers, json=payload)
+                if res.status_code == 201:
+                    print(f"   #️⃣ Canal: {ch.get('name')}")
+                current += 1
+                progress_bar(current, total, "Canales")
+                time.sleep(0.8)
+            except Exception as e:
+                print(f"   ❌ Error canal {ch.get('name')}: {e}")
+        print("\n✅ Canales terminados!")
+
+    def clone_emojis():
+        print("\n😀 Clonando Emojis...")
+        r = requests.get(f"https://discord.com/api/v10/guilds/{SOURCE_GUILD_ID}/emojis", headers=headers)
+        if not check_response(r, "obtener emojis"):
+            return
+        
+        emojis = r.json()
+        total = len(emojis)
+        
+        for i, emoji in enumerate(emojis, 1):
+            try:
+                ext = 'gif' if emoji.get('animated') else 'png'
+                emoji_url = f"https://cdn.discordapp.com/emojis/{emoji['id']}.{ext}"
+                resp = requests.get(emoji_url)
+                if resp.status_code == 200:
+                    payload = {
+                        "name": emoji['name'],
+                        "image": f"data:image/{ext};base64,{base64.b64encode(resp.content).decode('utf-8')}"
+                    }
+                    res = requests.post(f"https://discord.com/api/v10/guilds/{TARGET_GUILD_ID}/emojis", headers=headers, json=payload)
+                    if res.status_code == 201:
+                        print(f"   ✅ Emoji: {emoji['name']}")
+                progress_bar(i, total, "Emojis")
+                time.sleep(1.2)
+            except Exception as e:
+                print(f"   ⚠️ Error emoji {emoji.get('name')}: {e}")
+        print("\n✅ Emojis terminados!")
+
+    # ==================== EJECUCIÓN ====================
+    print("🚀 Iniciando clonación completa...\n")
+    
+    clone_server_name_icon()
+    clone_roles()
+    clone_channels()
+    clone_emojis()
+    
+    print("\n" + "="*80)
+    print("🎉 ¡CLONACIÓN FINALIZADA!")
+    print("   Revisa tu servidor destino.")
+    print("="*80)
